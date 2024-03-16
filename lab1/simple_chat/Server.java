@@ -17,16 +17,17 @@ public class Server {
         System.out.println("---CHAT-SERVER---");
         int portNumber = 12345;
         ServerSocket serverSocket = null;
+        DatagramSocket udpSocket = null;
 
         Map<Integer, Socket> socketsMap = new HashMap<>();
 
         int id = 0;
 
         try {
-
             serverSocket = new ServerSocket(portNumber);
+            udpSocket = new DatagramSocket(portNumber);
 
-            ClientUDP udpClient = new ClientUDP(socketsMap);
+            ClientUDP udpClient = new ClientUDP(udpSocket, socketsMap);
             Thread udpClientThread = new Thread(udpClient);
             udpClientThread.start();
 
@@ -45,9 +46,11 @@ public class Server {
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            if (serverSocket != null) {
+            if (serverSocket != null)
                 serverSocket.close();
-            }
+            if (udpSocket != null)
+                udpSocket.close();
+
         }
     }
 
@@ -88,7 +91,7 @@ public class Server {
                 }
 
             } catch (IOException e) {
-                e.printStackTrace();
+                // if ()
             } finally {
                 if (socketsMap.get(this.id) != null) {
                     try {
@@ -103,24 +106,24 @@ public class Server {
     }
 
     public static class ClientUDP implements Runnable {
+        private DatagramSocket socket;
         private Map<Integer, Socket> socketsMap;
 
-        public ClientUDP(Map<Integer, Socket> socketsMap) {
+        public ClientUDP(DatagramSocket socket, Map<Integer, Socket> socketsMap) {
+            this.socket = socket;
             this.socketsMap = socketsMap;
         }
 
         @Override
         public void run() {
-            DatagramSocket udpSocket = null;
             String msg = null;
             try {
-                udpSocket = new DatagramSocket(12345);
                 byte[] receiveBuffer = new byte[1024];
                 while (true) {
                     Arrays.fill(receiveBuffer, (byte) 0);
                     DatagramPacket receivePacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
 
-                    udpSocket.receive(receivePacket);
+                    socket.receive(receivePacket);
 
                     msg = new String(receivePacket.getData());
 
@@ -134,17 +137,13 @@ public class Server {
                                 || client.getPort() != receivePacket.getPort()) {
                             DatagramPacket sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length,
                                     client.getLocalAddress(), client.getPort());
-                            udpSocket.send(sendPacket);
+                            socket.send(sendPacket);
                         }
                     }
                 }
             } catch (Exception e) {
                 e.printStackTrace();
-            } finally {
-                if (udpSocket != null)
-                    udpSocket.close();
             }
         }
     }
-
 }
