@@ -1,8 +1,23 @@
 from fastapi import FastAPI, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse
 import requests
+from slowapi.errors import RateLimitExceeded
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+
 
 app = FastAPI()
+
+# throttling
+
+
+async def _rate_limit_exceeded_handler(request, exc: RateLimitExceeded):
+    return HTMLResponse(content="<h3>Too many requests! Try again later.</h3>", status_code=429)
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 
 # HTML z formularzem
 html_form = """
@@ -21,6 +36,7 @@ html_form = """
     </body>
 </html>"""
 
+
 # wyświetlanie formularza
 
 
@@ -28,29 +44,61 @@ html_form = """
 async def get_form():
     return html_form
 
-# przetwarzanie danych z formularza
 
-
-@app.post("/result")
-async def result(request: Request, word: str = Form(...)):
-    if len(word.split()) != 1:
-        return HTMLResponse(content="<h2>Error: Word must contain exactly one word!</h2>", status_code=400)
-    if not word.isalpha():
-        return HTMLResponse(content="<h2>Error: Word must contain only English alphabet characters!</h2>", status_code=400)
-
-    # URL requests
+@app.get("/get_word_def/{word}")
+async def get_word_def(word: str):
     dictionary_api_url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{word}"
-    detect_language_api_url = "https://ws.detectlanguage.com/0.2/detect"
-    detect_language_api_url_languages = "https://ws.detectlanguage.com/0.2/languages"
-    detect_language_headers = {
-        "Authorization": "Bearer 41bfa8566fa216f921075191b4c133f7"}
-    detect_language_payload = {"q": word}
     try:
-        # DetectLanguageAPI
+        dictionary_api_response = requests.get(dictionary_api_url)
+        dictionary_api_response.raise_for_status()
+        dictionary_api_data = dictionary_api_response.json()
+        return dictionary_api_data
+    except requests.exceptions.RequestException as e:
+        return HTMLResponse(content=f"<h2>Error: An error occured while getting definition of word \"{word}\".</h2>", status_code=500)
+
+
+@app.get("/get_detection/{word}")
+async def get_detection(word: str):
+    detect_language_api_url = f"https://ws.detectlanguage.com/0.2/detect"
+    try:
+        detect_language_headers = {
+            "Authorization": "Bearer 41bfa8566fa216f921075191b4c133f7"}
+        detect_language_payload = {"q": word}
         detect_language_response = requests.post(
             detect_language_api_url, headers=detect_language_headers, data=detect_language_payload)
         detect_language_response.raise_for_status()
         detect_language_data = detect_language_response.json()
+        return detect_language_data
+    except requests.exceptions.RequestException as e:
+        return HTMLResponse(content=f"<h2>Error: An error occured while getting language detection of the word \"{word}\"!</h2>", status_code=500)
+
+
+@app.get("/get_languages")
+async def get_languages():
+    detect_language_api_url_languages = f"https://ws.detectlanguage.com/0.2/languages"
+    try:
+        languages = requests.get(detect_language_api_url_languages)
+        languages.raise_for_status()
+        languages = languages.json()
+        return languages
+    except requests.exceptions.RequestException as e:
+        return HTMLResponse(content="<h2>Error: Word must contain exactly one word!</h2>", status_code=500)
+
+# przetwarzanie danych z formularza
+
+
+@app.post("/result")
+@limiter.limit("10/minute")
+async def result(request: Request, word: str = Form(...)):
+    try:
+        if len(word.split()) != 1:
+            return HTMLResponse(content="<h2>Error: Word must contain exactly one word!</h2>", status_code=400)
+        if not word.isalpha():
+            return HTMLResponse(content="<h2>Error: Word must contain only English alphabet characters!</h2>", status_code=400)
+
+        detect_language_data = await get_detection(word)
+        if isinstance(detect_language_data, HTMLResponse):
+            return detect_language_data
 
         # sprawdzanie, czy słowo jest angielskie
         is_english = any(
@@ -60,9 +108,9 @@ async def result(request: Request, word: str = Form(...)):
 
             # DictionaryAPI
 
-            dictionary_api_response = requests.get(dictionary_api_url)
-            dictionary_api_response.raise_for_status()
-            dictionary_api_data = dictionary_api_response.json()
+            dictionary_api_data = await get_word_def(word)
+            if isinstance(dictionary_api_data, HTMLResponse):
+                return dictionary_api_data
 
             # definicje słowa
             definitions_html = ""
@@ -112,9 +160,10 @@ async def result(request: Request, word: str = Form(...)):
 
         else:
             # zapytanie o słownik skrótow języków
-            languages = requests.get(detect_language_api_url_languages)
-            languages.raise_for_status()
-            languages = languages.json()
+            languages = await get_languages()
+            if isinstance(languages, HTMLResponse):
+                return languages
+
             languages_dict = {language["code"]: language["name"]
                               for language in languages}
             languages_html = ""
@@ -138,19 +187,5 @@ async def result(request: Request, word: str = Form(...)):
                 </html>
                 """
             return HTMLResponse(content=response_html)
-
-    except requests.exceptions.RequestException as e:
-        response_html = f"""
-            <!DOCTYPE html>
-            <html>
-                <head>
-                    <title>API Service Error</title>
-                </head>
-                <body>
-                    <h2>Error</h2>
-                    <p>An error occurred while processing your request:</p>
-                    <p>{str(e)}</p>
-                </body>
-            </html>
-            """
-        return HTMLResponse(content=response_html, status_code=500)
+    except Exception as e:
+        return HTMLResponse(content=f"<h2>Internal Server Error: {e}</h2>", status_code=500)
