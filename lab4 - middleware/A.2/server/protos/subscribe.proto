@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package subs;
+
+service Subscriber {
+	rpc GetCityWeather (WeatherRequest) returns (stream WeatherReply);
+	rpc GetCurrencyExchange (CurrencyRequest) returns (stream CurrencyReply);
+	rpc GetDiscounts (DiscountsRequest) returns (stream DiscountsReply);
+}
+
+
+enum Currency {
+	EUR = 0;
+	USD = 1;
+	GBP = 2;
+}
+
+enum Shop {
+	SHOP_1 = 0;
+	SHOP_2 = 1;
+	SHOP_3 = 2;
+}
+
+message WeatherRequest {
+	int32 acceptable_degrees = 1;
+	string city = 3;
+}
+
+message WeatherReply {
+	bool is_weather_ok = 1;
+  	string response_message = 2;
+}
+
+
+message CurrencyRequest{
+	double acceptable_amount = 1;
+	Currency currency_type = 2;
+}
+
+message CurrencyReply{
+	bool is_currency_ok = 1;
+	double current_exchange = 2;
+	string response_message = 3;
+}
+
+message Discount{
+	string description = 1;
+	int32 discount_value = 2;
+	double current_price = 3;
+}
+
+message DiscountsRequest{
+	Shop shop = 1;
+}
+
+message DiscountsReply{
+	int32 how_many_discounts = 1;
+	repeated Discount discounts = 2;
+	string response_message = 3;
+}
