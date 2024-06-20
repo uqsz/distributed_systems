@@ -4,7 +4,7 @@ This repository contains implementations and resources related to distributed sy
 
 ## Contents
 
-1. **[Sockets](#https://github.com/uqsz/distributed_systems/tree/master/api)**
+1. **[Sockets](https://github.com/uqsz/distributed_systems/tree/master/api)**
 2. **[API](#API)**
 3. **[Ray](#Ray)**
 4. **[Middleware](#Middleware)**
