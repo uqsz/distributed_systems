@@ -6,10 +6,9 @@ This repository contains implementations and resources related to distributed sy
 
 1. **[Sockets](sockets)**
 2. **[API](api)**
-3. **[Ray](ray)**
-4. **[Middleware](middleware)**
-5. **[RabbitMQ](rabbitmq)**
-6. **[Zookeeper](zookeeper)**
+3. **[Middleware](middleware)**
+4. **[RabbitMQ](rabbitmq)**
+5. **[Zookeeper](zookeeper)**
 
 ### Sockets
 
