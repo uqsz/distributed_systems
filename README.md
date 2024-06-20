@@ -4,12 +4,12 @@ This repository contains implementations and resources related to distributed sy
 
 ## Contents
 
-1. **[Sockets](#Sockets)**
-2. **[API](#API)**
-3. **[Ray](#Ray)**
-4. **[Middleware](#Middleware)**
-5. **[RabbitMQ](#RabbitMQ)**
-6. **[Zookeeper](#Zookeeper)**
+1. **[Sockets](sockets)**
+2. **[API](api)**
+3. **[Ray](ray)**
+4. **[Middleware](middleware)**
+5. **[RabbitMQ](rabbitmq)**
+6. **[Zookeeper](zookeeper)**
 
 ### Sockets
 
