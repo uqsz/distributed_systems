@@ -19,9 +19,6 @@ A chat application where clients connect to the server via the TCP and UDP proto
 
 A basic web service leveraging open REST APIs to execute a complex functionality. Simple English dictionary.
 
-### Ray
-
-Notebook with lab exercises about Actor Model with ray framework.
 
 ### Middleware
 
